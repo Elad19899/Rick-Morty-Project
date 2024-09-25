@@ -5,7 +5,7 @@
 The first and most important process (and this is because of the file upload limit that failed)
 
 1. Open a new folder under the name of the project = Rick_Morty_Project
-2. Insert the api_test folders and the ui-test folder under the project's main folder
+2. Insert the API_Tests folders and the UI_Tests folder under the project's main folder
 3. Open the IDE and upload the project
 
 Before you can run the file code you need to do a few actions:
