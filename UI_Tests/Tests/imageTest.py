@@ -2,8 +2,28 @@ import pytest
 from selenium import webdriver
 from datetime import datetime
 import os
+import requests
 from UI_Tests.Pages.google_home_page import GoogleHomePage
 from UI_Tests.Pages.google_image_search_page import GoogleImagesPage
+
+
+# Function to fetch characters from the Rick and Morty API
+def fetch_characters(api_url="https://rickandmortyapi.com/api/character"):
+    characters = []
+    url = api_url
+
+    while url:
+        response = requests.get(url)
+        if response.status_code == 200:
+            data = response.json()
+            characters.extend(data['results'])
+            url = data['info']['next']
+        else:
+            print(f"Failed to retrieve characters: {response.status_code}")
+            break
+
+    return characters
+
 
 @pytest.fixture
 def setup_browser():
@@ -12,8 +32,27 @@ def setup_browser():
     yield driver
     driver.quit()
 
+
 def test_character_images(setup_browser):
     driver = setup_browser
+
+    # Fetch characters from the API
+    characters = fetch_characters()
+
+    # Check if at least two characters were fetched
+    assert len(characters) >= 2, "Not enough characters fetched from the API."
+
+    # Choose the first two characters
+    first_character = characters[0]
+    second_character = characters[1]
+
+    first_character_name = first_character['name']
+    first_character_id = first_character['id']
+
+    second_character_name = second_character['name']
+    second_character_id = second_character['id']
+
+    print(f"Testing with characters: {first_character_name} and {second_character_name}")
 
     try:
         # Open Google Home Page
@@ -25,18 +64,11 @@ def test_character_images(setup_browser):
         assert "Google" in driver.title, "Google Home Page not loaded."
         print("Verified: Google Home Page loaded correctly.")
 
-        # Step 2: Search for Rick & Morty images
-        home_page.search_for_images('Rick & Morty images')
-        print("Searched for 'Rick & Morty images' successfully.")
-
-        # Step 3: Search for the first character
-        first_character_name = "Rick Sanchez"
-        first_character_id = 123  # Example ID
-
+        # Step 2: Search for the first character's images
         home_page.search_character_image(first_character_name)
         print(f"Searched for character '{first_character_name}' successfully.")
 
-        # Step 4: Click on the correct image based on the character ID
+        # Step 3: Click on the correct image based on the character ID
         home_page.click_on_correct_image(first_character_id)
         print(f"Clicked on the correct image for character ID: {first_character_id}.")
 
@@ -57,10 +89,7 @@ def test_character_images(setup_browser):
         assert os.path.exists(first_screenshot), "Screenshot was not saved successfully."
         print("Verified: Screenshot saved successfully.")
 
-        # Step 5: Search for the second character
-        second_character_name = "Morty Smith"
-        second_character_id = 456  # Example ID
-
+        # Step 4: Search for the second character's images
         home_page.search_character_image(second_character_name)
         print(f"Searched for character '{second_character_name}' successfully.")
 
@@ -77,7 +106,7 @@ def test_character_images(setup_browser):
         assert os.path.exists(second_screenshot), "Screenshot was not saved successfully."
         print("Verified: Second screenshot saved successfully.")
 
-        # Step 6: Retrieve and verify character locations
+        # Step 5: Retrieve and verify character locations (from the UI logic)
         first_character_location = home_page.get_character_location(first_character_name)
         second_character_location = home_page.get_character_location(second_character_name)
 
@@ -85,7 +114,8 @@ def test_character_images(setup_browser):
         if first_character_location == second_character_location:
             print(f"Both characters are from {first_character_location}.")
         else:
-            print(f"{first_character_name} is from {first_character_location} and {second_character_name} is from {second_character_location}.")
+            print(
+                f"{first_character_name} is from {first_character_location} and {second_character_name} is from {second_character_location}.")
 
         # Assert that the locations match
         assert first_character_location == second_character_location, \
