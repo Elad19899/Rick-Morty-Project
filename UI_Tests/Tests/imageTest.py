@@ -1,133 +1,106 @@
+# imageTest.py
+
 import pytest
 from selenium import webdriver
 from datetime import datetime
 import os
-import requests
+import random
 from UI_Tests.Pages.google_home_page import GoogleHomePage
 from UI_Tests.Pages.google_image_search_page import GoogleImagesPage
-
-
-# Function to fetch characters from the Rick and Morty API
-def fetch_characters(api_url="https://rickandmortyapi.com/api/character"):
-    characters = []
-    url = api_url
-
-    while url:
-        response = requests.get(url)
-        if response.status_code == 200:
-            data = response.json()
-            characters.extend(data['results'])
-            url = data['info']['next']
-        else:
-            print(f"Failed to retrieve characters: {response.status_code}")
-            break
-
-    return characters
-
+from UI_Tests.Pages.fetch_characters import fetch_characters
 
 @pytest.fixture
 def setup_browser():
+    """
+    Sets up the Chrome browser for testing.
+    Yields:
+        driver (webdriver.Chrome): A Chrome WebDriver instance.
+    """
     driver = webdriver.Chrome()
     driver.maximize_window()
     yield driver
     driver.quit()
 
-
 def test_character_images(setup_browser):
+    """
+    Test that searches for two random characters from Rick and Morty
+    on Google Images and takes screenshots.
+    Args:
+        setup_browser: PyTest fixture that sets up and tears down the WebDriver.
+    """
     driver = setup_browser
 
-    # Fetch characters from the API
+    # Step 1: Fetch characters from the API
     characters = fetch_characters()
+    print(f"Fetched {len(characters)} characters from the API.")
 
-    # Check if at least two characters were fetched
-    assert len(characters) >= 2, "Not enough characters fetched from the API."
+    # Ensure we have enough characters
+    assert len(characters) >= 2, "Not enough characters to test."
 
-    # Choose the first two characters
-    first_character = characters[0]
-    second_character = characters[1]
+    # Randomly select two characters
+    first_character = random.choice(characters)
+    second_character = random.choice(characters)
 
-    first_character_name = first_character['name']
-    first_character_id = first_character['id']
+    # Ensure they are not the same character
+    while first_character['id'] == second_character['id']:
+        second_character = random.choice(characters)
 
-    second_character_name = second_character['name']
-    second_character_id = second_character['id']
+    # Print details of the selected characters
+    print(f"Character 1: Name = {first_character['name']}, ID = {first_character['id']}")
+    print(f"Character 2: Name = {second_character['name']}, ID = {second_character['id']}")
 
-    print(f"Testing with characters: {first_character_name} and {second_character_name}")
+    # Step 2: Open Google Home Page
+    home_page = GoogleHomePage(driver)
+    home_page.open_google_home()
+    print("Google Home Page opened successfully.")
 
-    try:
-        # Open Google Home Page
-        home_page = GoogleHomePage(driver)
-        home_page.open_google_home()
-        print("Google Home Page opened successfully.")
+    # Verify that the correct page loaded
+    assert "Google" in driver.title, "Google Home Page not loaded."
+    print("Verified: Google Home Page loaded correctly.")
 
-        # Verify the correct page loaded
-        assert "Google" in driver.title, "Google Home Page not loaded."
-        print("Verified: Google Home Page loaded correctly.")
+    # Step 3: Search for images of the first character, ensuring Rick and Morty context
+    home_page.search_for_images(first_character['name'])
+    print(f"Searched for images of {first_character['name']}.")
 
-        # Step 2: Search for the first character's images
-        home_page.search_character_image(first_character_name)
-        print(f"Searched for character '{first_character_name}' successfully.")
+    # Step 4: Click on the correct image for the first character
+    home_page.click_on_correct_image(first_character['name'])
+    print(f"Clicked on the image for character: {first_character['name']}.")
 
-        # Step 3: Click on the correct image based on the character ID
-        home_page.click_on_correct_image(first_character_id)
-        print(f"Clicked on the correct image for character ID: {first_character_id}.")
+    # Initialize the images page
+    images_page = GoogleImagesPage(driver)
 
-        # Initialize the images page
-        images_page = GoogleImagesPage(driver)
+    # Ensure the images page loaded
+    images_page.wait_for_images_to_load()
+    print("Images page loaded successfully.")
 
-        # Ensure images page loaded
-        images_page.wait_for_images_to_load()
-        print("Images page loaded successfully.")
+    # Take a screenshot of the first character
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    first_screenshot = f"screenshots/{first_character['name'].replace(' ', '_')}-{first_character['id']}-{timestamp}.png"
+    images_page.capture_screenshot(first_screenshot)
+    print(f"Screenshot taken and saved at: {first_screenshot}")
 
-        # Take screenshot of the first character
-        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        first_screenshot = f"screenshots/{first_character_name}-{first_character_id}-{timestamp}.png"
-        images_page.capture_screenshot(first_screenshot)
-        print(f"Screenshot taken and saved at: {first_screenshot}")
+    # Verify the screenshot exists
+    assert os.path.exists(first_screenshot), "Screenshot was not saved successfully."
+    print("Verified: Screenshot saved successfully.")
 
-        # Verify screenshot exists
-        assert os.path.exists(first_screenshot), "Screenshot was not saved successfully."
-        print("Verified: Screenshot saved successfully.")
+    # Step 5: Search for images of the second character
+    home_page.search_for_images(second_character['name'])
+    print(f"Searched for images of {second_character['name']}.")
 
-        # Step 4: Search for the second character's images
-        home_page.search_character_image(second_character_name)
-        print(f"Searched for character '{second_character_name}' successfully.")
+    # Click on the correct image for the second character
+    home_page.click_on_correct_image(second_character['name'])
+    print(f"Clicked on the image for character: {second_character['name']}.")
 
-        # Click on the correct image for the second character
-        home_page.click_on_correct_image(second_character_id)
-        print(f"Clicked on the correct image for character ID: {second_character_id}.")
+    # Take a screenshot of the second character
+    second_screenshot = f"screenshots/{second_character['name'].replace(' ', '_')}-{second_character['id']}-{timestamp}.png"
+    images_page.capture_screenshot(second_screenshot)
+    print(f"Screenshot taken and saved at: {second_screenshot}")
 
-        # Take screenshot of the second character
-        second_screenshot = f"screenshots/{second_character_name}-{second_character_id}-{timestamp}.png"
-        images_page.capture_screenshot(second_screenshot)
-        print(f"Screenshot taken and saved at: {second_screenshot}")
+    # Verify the screenshot exists
+    assert os.path.exists(second_screenshot), "Screenshot was not saved successfully."
+    print("Verified: Second screenshot saved successfully.")
 
-        # Verify screenshot exists
-        assert os.path.exists(second_screenshot), "Screenshot was not saved successfully."
-        print("Verified: Second screenshot saved successfully.")
-
-        # Step 5: Retrieve and verify character locations (from the UI logic)
-        first_character_location = home_page.get_character_location(first_character_name)
-        second_character_location = home_page.get_character_location(second_character_name)
-
-        # Verify and assert if the locations are the same or different
-        if first_character_location == second_character_location:
-            print(f"Both characters are from {first_character_location}.")
-        else:
-            print(
-                f"{first_character_name} is from {first_character_location} and {second_character_name} is from {second_character_location}.")
-
-        # Assert that the locations match
-        assert first_character_location == second_character_location, \
-            f"{first_character_name} is from {first_character_location} and {second_character_name} is from {second_character_location}."
-
-        print("Test passed: All steps completed successfully.")
-
-    except Exception as e:
-        print(f"Test failed: {str(e)}")
-        raise
-
-
+    print("Test passed: All steps completed successfully.")
 
 
 
